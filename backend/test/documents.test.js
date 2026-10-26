@@ -136,7 +136,10 @@ test('API de documentos com armazenamento local', async (t) => {
       method: 'POST', body: uploadForm(Buffer.alloc(10 * 1024 * 1024 + 1))
     });
     assert.equal(response.status, 413);
-    assert.equal((await response.json()).error.code, 'FILE_TOO_LARGE');
+    assert.deepEqual((await response.json()).error, {
+      code: 'FILE_TOO_LARGE',
+      message: 'O arquivo deve ter no máximo 10 MiB.'
+    });
     assert.deepEqual((await fs.readdir(directory)).sort(), before);
   });
 
