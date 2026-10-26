@@ -34,6 +34,20 @@ mas não remove os arquivos. As respostas públicas não expõem nomes internos 
 caminhos locais. Erros retornam JSON com `{ error: { code, message } }`.
 No frontend, use o prefixo `/api` para acessar essas rotas pelo proxy do Vite.
 
+## Frontend
+
+Na pasta `frontend`, execute `npm install` e `npm run dev`. Com o backend
+rodando na porta 3000, acesse `http://localhost:5173`. O proxy do Vite encaminha
+as requisições `/api` para o backend.
+
+A interface permite enviar um arquivo de qualquer tipo até 10 MiB, listar os
+documentos e baixá-los com o nome original. A listagem é atualizada após cada
+envio. Carregamento, sucesso e erros são apresentados na interface; se a
+listagem falhar, use **Tentar novamente**.
+
+O cliente em `frontend/src/services/api.js` centraliza as chamadas via `fetch`.
+Execute `npm test` para testar o cliente e `npm run build` para gerar o frontend.
+
 ---
 
 &copy; 2025 GitHub &bull; [Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md) &bull; [MIT License](https://gh.io/mit)
