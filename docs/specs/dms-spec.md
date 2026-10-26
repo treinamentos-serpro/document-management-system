@@ -30,6 +30,20 @@ memória.
 - Restrições por tipo MIME ou extensão do arquivo.
 - Exclusão, atualização ou compartilhamento de documentos.
 
+### Restrições operacionais do protótipo
+
+O backend deve operar como instância única: processos separados não compartilham
+os metadados. A identidade de demonstração é compartilhada por todos os clientes,
+portanto a aplicação não deve receber documentos reais ou confidenciais nem ser
+exposta a clientes não confiáveis.
+
+O limite por arquivo não limita o consumo total de disco. A operação deve
+monitorar o espaço disponível e prever limpeza manual dos arquivos de
+demonstração, com o backend parado e cópia prévia do que precisar ser preservado.
+Após encerrar o processo, os arquivos restantes não têm metadados recuperáveis.
+Não há limpeza automática nem suporte a múltiplas instâncias nesta fase.
+O procedimento de limpeza está descrito no [README](../../README.md#operação-do-protótipo).
+
 ## 3. Requisitos funcionais
 
 | ID    | Requisito |

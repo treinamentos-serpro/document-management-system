@@ -78,3 +78,141 @@ test('propaga falhas de rede e cancelamento para o chamador', async (t) => {
   t.mock.method(globalThis, 'fetch', async () => { throw error; });
   await assert.rejects(listDocuments(), (err) => err === error);
 });
+
+const metadataRequests = [
+  {
+    name: 'listagem',
+    request: () => listDocuments(),
+    wrap: (value) => ({ documents: [value] }),
+  },
+  {
+    name: 'upload',
+    request: () => uploadDocument(new File(['abc'], 'file.txt')),
+    wrap: (value) => ({ document: value }),
+  },
+];
+
+test('rejeita envelopes ausentes ou de tipos inválidos nas respostas de sucesso', async (t) => {
+  for (const { name, request } of metadataRequests) {
+    const bodies = [
+      null, [], 'documentos', 1, true, {},
+      { documents: null, document: null },
+      { documents: {}, document: [] },
+      { documents: 'lista', document: 'documento' },
+      { documents: false, document: false },
+      { documents: 1, document: 1 },
+    ];
+    for (const [index, body] of bodies.entries()) {
+      await t.test(`${name}: envelope ${index}`, async (t) => {
+        t.mock.method(globalThis, 'fetch', async () => Response.json(body));
+        await assert.rejects(request, {
+          name: 'Error',
+          message: /Resposta inválida do servidor/,
+        });
+      });
+    }
+  }
+});
+
+test('valida todos os metadados essenciais em ambos os endpoints', async (t) => {
+  const invalidValues = {
+    id: [null, 42, false, {}, [], '', '   '],
+    originalName: [null, 42, false, {}, [], '', '   '],
+    size: [null, '3', false, {}, [], -1, 0.5, Number.MAX_SAFE_INTEGER + 1],
+    uploadedAt: [null, 42, false, {}, [], '', '   ', 'data inválida'],
+    owner: [null, 42, false, {}, [], '', '   '],
+  };
+
+  for (const { name, request, wrap } of metadataRequests) {
+    for (const [field, values] of Object.entries(invalidValues)) {
+      for (const [index, value] of [undefined, ...values].entries()) {
+        await t.test(`${name}: ${field}, caso ${index}`, async (t) => {
+          t.mock.method(globalThis, 'fetch', async () => Response.json(wrap({
+            ...document,
+            [field]: value,
+          })));
+          await assert.rejects(request, {
+            name: 'Error',
+            message: /Resposta inválida do servidor/,
+          });
+        });
+      }
+    }
+    for (const [index, value] of [null, [], 'documento', 1, false].entries()) {
+      await t.test(`${name}: documento inválido ${index}`, async (t) => {
+        t.mock.method(globalThis, 'fetch', async () => Response.json(wrap(value)));
+        await assert.rejects(request, /Resposta inválida do servidor/);
+      });
+    }
+  }
+});
+
+test('rejeita a lista inteira quando há documento inválido entre documentos válidos', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({
+    documents: [document, { ...document, uploadedAt: 'inválida' }, document],
+  }));
+  await assert.rejects(listDocuments(), /Resposta inválida do servidor/);
+});
+
+test('rejeita tamanhos não finitos produzidos por números JSON fora do intervalo', async (t) => {
+  for (const { name, request, wrap } of metadataRequests) {
+    for (const size of ['1e400', '-1e400']) {
+      await t.test(`${name}: ${size}`, async (t) => {
+        const json = JSON.stringify(wrap(document)).replace('"size":3', `"size":${size}`);
+        t.mock.method(globalThis, 'fetch', async () => new Response(json));
+        await assert.rejects(request, /Resposta inválida do servidor/);
+      });
+    }
+  }
+});
+
+test('aceita identificadores opacos, arquivos vazios e campos adicionais sem alterar os dados', async (t) => {
+  for (const { name, request, wrap } of metadataRequests) {
+    for (const size of [0, Number.MAX_SAFE_INTEGER]) {
+      await t.test(`${name}: tamanho ${size}`, async (t) => {
+        const metadata = {
+          ...document,
+          id: ' id/?:#% não-uuid ',
+          size,
+          uploadedAt: '2026-10-26T09:00:00-03:00',
+          extra: { version: 1 },
+        };
+        const body = { ...wrap(metadata), extra: true };
+        t.mock.method(globalThis, 'fetch', async () => Response.json(body));
+        assert.deepEqual(await request(), name === 'listagem' ? [metadata] : metadata);
+      });
+    }
+  }
+});
+
+test('converte JSON inválido ou corpo vazio de sucesso em erro compreensível', async (t) => {
+  for (const { name, request } of metadataRequests) {
+    for (const content of ['{', '<html>Erro no proxy</html>', '']) {
+      await t.test(`${name}: conteúdo ${JSON.stringify(content)}`, async (t) => {
+        t.mock.method(globalThis, 'fetch', async () => new Response(content));
+        await assert.rejects(request, {
+          name: 'Error',
+          message: 'Resposta inválida do servidor: o conteúdo não é um JSON válido.',
+        });
+      });
+    }
+  }
+});
+
+test('preserva falhas de rede e cancelamento nos endpoints de metadados', async (t) => {
+  for (const { name, request } of metadataRequests) {
+    for (const error of [new TypeError('Failed to fetch'), new DOMException('Cancelado', 'AbortError')]) {
+      await t.test(`${name}: ${error.name}`, async (t) => {
+        t.mock.method(globalThis, 'fetch', async () => { throw error; });
+        await assert.rejects(request, (received) => received === error);
+      });
+      await t.test(`${name}: ${error.name} durante leitura do corpo`, async (t) => {
+        t.mock.method(globalThis, 'fetch', async () => ({
+          ok: true,
+          json: async () => { throw error; },
+        }));
+        await assert.rejects(request, (received) => received === error);
+      });
+    }
+  }
+});
