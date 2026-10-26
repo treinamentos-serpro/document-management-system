@@ -1,7 +1,7 @@
 ---
 description: Agente de TDD que escreve testes antes da implementação seguindo o ciclo Red-Green-Refactor.
 name: tdd
-tools: ['search', 'codebase', 'usages', 'runTests', 'editFiles']
+tools: ['search', 'search/codebase', 'search/usages', 'vscodeGeneral/usages', 'execute/runTests', 'vscodeGeneral/runTests', 'edit/editFiles']
 handoffs:
   - label: Implementar para passar nos testes
     agent: agent
