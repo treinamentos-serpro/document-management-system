@@ -1,18 +1,15 @@
 const { randomUUID } = require('node:crypto');
 const repository = require('../repositories/documents.repository');
+const { toPublicMetadata } = require('./documents-metadata');
 
 const DEMO_OWNER = 'demo-user';
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-
-function publicMetadata(document) {
-  const { id, originalName, size, uploadedAt, owner } = document;
-  return { id, originalName, size, uploadedAt, owner };
-}
+const FILE_TOO_LARGE_MESSAGE = 'O arquivo deve ter no máximo 10 MiB.';
 
 async function registerUpload(file) {
   try {
     if (file.size > MAX_FILE_SIZE) {
-      const err = new Error('O arquivo deve ter no máximo 10 MiB.');
+      const err = new Error(FILE_TOO_LARGE_MESSAGE);
       err.code = 'FILE_TOO_LARGE';
       throw err;
     }
@@ -24,7 +21,7 @@ async function registerUpload(file) {
       owner: DEMO_OWNER,
       storageFilename: file.filename
     });
-    return publicMetadata(document);
+    return toPublicMetadata(document);
   } catch (err) {
     try {
       await repository.removeFile(file.filename);
@@ -39,7 +36,7 @@ async function listDocuments() {
   const documents = await repository.findByOwner(DEMO_OWNER);
   return documents
     .sort((first, second) => second.uploadedAt.localeCompare(first.uploadedAt))
-    .map(publicMetadata);
+    .map(toPublicMetadata);
 }
 
 async function getDownload(id) {
@@ -56,6 +53,7 @@ async function getDownload(id) {
 
 module.exports = {
   MAX_FILE_SIZE,
+  FILE_TOO_LARGE_MESSAGE,
   prepareStorage: repository.prepareStorage,
   registerUpload,
   listDocuments,

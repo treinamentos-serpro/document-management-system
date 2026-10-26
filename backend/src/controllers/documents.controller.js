@@ -29,7 +29,7 @@ function upload(req, res) {
   receiveFile(req, res, async (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return sendError(res, 413, 'FILE_TOO_LARGE', 'O arquivo deve ter no máximo 10 MiB.', err);
+        return sendError(res, 413, 'FILE_TOO_LARGE', service.FILE_TOO_LARGE_MESSAGE, err);
       }
       if (err instanceof multer.MulterError ||
           /^(Multipart:|Unexpected end of (form|file)|Malformed part header)/.test(err.message)) {
@@ -47,7 +47,7 @@ function upload(req, res) {
       res.status(201).json({ document });
     } catch (registrationError) {
       if (registrationError.code === 'FILE_TOO_LARGE') {
-        return sendError(res, 413, 'FILE_TOO_LARGE', 'O arquivo deve ter no máximo 10 MiB.', registrationError);
+        return sendError(res, 413, 'FILE_TOO_LARGE', service.FILE_TOO_LARGE_MESSAGE, registrationError);
       }
       sendError(res, 500, 'UPLOAD_FAILED', 'Não foi possível registrar o documento.', registrationError);
     }
