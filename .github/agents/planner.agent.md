@@ -1,7 +1,7 @@
 ---
 description: Agente de planejamento que pesquisa o codebase e gera um plano de implementação sem alterar código.
 name: planner
-tools: ['search', 'codebase', 'usages']
+tools: ['search', 'search/codebase', 'search/usages','vscodeGeneral/usages']
 handoffs:
   - label: Iniciar implementação
     agent: agent
